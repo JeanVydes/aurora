@@ -20,6 +20,19 @@ services:
     volumes:
       - redis-data:/data
 
+  frontend:
+    build: ./frontend
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      LOCALSTACK_HOST: http://emulador:4566
+      # For external agents hitting the Flask/LocalStack API directly:
+      # LOCALSTACK_API_URL: http://emulador:4566/restapis/<api-id>/prod/_user_request_
+    depends_on:
+      - emulador
+      - redis
+
   cloudflared:
     image: cloudflare/cloudflared:latest
     restart: unless-stopped
