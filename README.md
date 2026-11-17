@@ -79,24 +79,21 @@ Aurora/
 ## 4. Flujo de Trabajo con Docker Compose y `cdklocal`
 
 ```bash
-# 1. Levantar los 3 contenedores
+# 1. Levantar todo (emulador + redis + frontend + cdk-dev)
 docker compose up -d --build
 
-# 2. Entrar al contenedor de desarrollo
-docker compose exec cdk-dev bash
+# 2. Bootstrap + deploy del stack CDK (desde el host)
+./scripts/deploy-local.sh bootstrap
+./scripts/deploy-local.sh deploy --require-approval never
 
-# 3. Preparar el emulador para despliegues CDK
-cdklocal bootstrap
-
-# 4. Sintetizar y desplegar el stack en LocalStack
-cdklocal deploy --require-approval never
-
-# 5. Ejecutar pruebas unitarias (con moto y fakeredis, sin requerir el emulador)
-#    En el contenedor (venv de uv ya en PATH):
-pytest -v
-#    En el host, con uv nativo:
+# 3. Tests unitarios (mioto+fakeredis; no necesita el emulador)
 uv run pytest -v
 ```
+
+> **Nota sobre `cdklocal` dentro de `cdk-dev`:** funciona solo si el host resuelve
+> `localhost.localstack.cloud` (nss/systemd-resolved). El script corre el CLI desde el host y
+> fija `JSII_RUNTIME_PACKAGE_CACHE_ROOT`, que es más predecible cross-distro —
+> funciona aquí y en cualquier Linux con Docker + Node 20+ en el PATH.
 
 > **Dependencias con uv (astral):** el proyecto usa `pyproject.toml` + `uv.lock`; no se usa `pip`
 > ni `requirements.txt` en ninguna parte.
@@ -165,6 +162,45 @@ npm run dev
 
 
 ## 7. Acceso público — Cloudflare Tunnel + Vercel
+
+El stack corre **100% local** en este computador; el API Gateway se expone por
+un **túnel nombrado de Cloudflare** con scope estricto.
+
+### Otro PC: todo en Docker, sin Vercel/túnel
+
+En cualquier máquina Linux con Docker:
+
+```bash
+git clone https://github.com/JeanVydes/aurora.git
+cd aurora
+
+# 1) construir el frontend y levantar todo (localstack + redis + frontend)
+docker compose up -d --build
+
+# 2) bootstrap + deploy de CDK (una vez por máquina)
+docker compose exec cdk-dev bash -c 'cdklocal bootstrap && cdklocal deploy --require-approval never'
+# o en `app/`: cdklocal deploy
+
+# 3) abrir
+xdg-open http://localhost:3000    # o simplemente http://localhost:3000 en el navegador
+```
+
+Puertos expuestos:
+| Puerto | Servicio |
+| :--- | :--- |
+| `3000` | Frontend (Next.js standalone) |
+| `4566` | LocalStack (API Gateway, Lambda, DynamoDB) |
+| `6379` | Redis |
+
+Variables de entorno relevantes para el frontend en Docker:
+- `LOCALSTACK_HOST` (default `http://emulador:4566`): URL del API Gateway para el proxy
+  `/api/v1/*` de Next.js. En local NO necesitas tocarla (interna de la red compose).
+
+Notas:
+- **No necesita Vercel ni túnel** — el frontend habla con LocalStack directamente por la red compose.
+- La tabla es efímera (LocalStack en memoria): recrear `emulador` pierde datos; `cdklocal deploy` la recrea.
+- Para acceso desde otra máquina en la misma LAN: publicar `3000`/`4566` con el firewall del host y usar esa IP.
+- El túnel Cloudflare (`api-aurora.jeanvides.com`) solo hace falta para demo público desde Internet; ver más abajo.
 
 El stack corre **100% local** en este computador; el API Gateway se expone por
 un **túnel nombrado de Cloudflare** con scope estricto.
