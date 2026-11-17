@@ -1,0 +1,41 @@
+# dependencies
+node_modules/
+.venv/
+venv/
+
+# Python caches
+__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+
+# CDK / CloudFormation build output
+cdk.out/
+app/cdk.out/
+
+# Lambda layer bundled dependencies (installed via scripts/build-layer.sh)
+app/layers/dependencias/python/
+
+# Frontend build output
+.next/
+out/
+
+# Secrets / credentials — never commit
+.env
+.env.local
+.env*.local
+.cloudflared/
+cloudflared/*.json
+cloudflared/cert.pem
+frontend/.env.local
+frontend/.vercel/
+
+# Logs
+*.log
+npm-debug.log*
+
+# Misc
+.DS_Store
+*.tsbuildinfo

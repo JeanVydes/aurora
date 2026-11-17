@@ -1,0 +1,10 @@
+tunnel: a86cd5d0-352f-410d-9bf9-9bfb95b1a172
+credentials-file: /etc/cloudflared/a86cd5d0-352f-410d-9bf9-9bfb95b1a172.json
+
+# Scope estricto: SOLO el control plane/data plane de API Gateway.
+# Todo lo demás (LocalStack internals, S3, DynamoDB, admin) queda bloqueado.
+ingress:
+  - hostname: api-aurora.jeanvides.com
+    path: ^/restapis
+    service: http://emulador:4566
+  - service: http_status:404

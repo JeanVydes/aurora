@@ -1,0 +1,56 @@
+services:
+  emulador:
+    image: localstack/localstack:4.14
+    ports:
+      - "4566:4566"
+    environment:
+      - LAMBDA_EXECUTOR=docker
+      # Workaround LocalStack Community: las Lambda Layers son feature Pro.
+      # Se monta el contenido de la capa directamente en los contenedores lambda.
+      - LAMBDA_DOCKER_FLAGS=-v /home/jean/aurora/app/layers/dependencias/python:/opt/python:ro
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - /home/jean/aurora/app/layers/dependencias/python:/opt/python:ro
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - redis-data:/data
+
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    restart: unless-stopped
+    command: ["tunnel", "--no-autoupdate", "--config", "/etc/cloudflared/config.yml", "run"]
+    dns:
+      - 181.70.124.110
+      - 190.240.115.150
+    volumes:
+      - ./cloudflared:/etc/cloudflared:ro
+    depends_on:
+      - emulador
+
+  cdk-dev:
+    build:
+      context: .
+      network: host
+    network_mode: host
+    environment:
+      - AWS_ACCESS_KEY_ID=test
+      - AWS_SECRET_ACCESS_KEY=test
+      - AWS_DEFAULT_REGION=us-east-1
+      - JWT_SECRET=dev-only-insecure-jwt-secret-do-not-use-in-prod
+    volumes:
+      - ./app:/app
+    working_dir: /app
+    depends_on:
+      - emulador
+      - redis
+    tty: true
+    stdin_open: true
+    command: ["sleep", "infinity"]
+
+volumes:
+  redis-data:
